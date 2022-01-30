@@ -18,9 +18,20 @@ This script extracts features from a CNN network
 # and limitations under the License.
 
 from typing import Callable, Dict, Iterable
+from functools import partial
 
 import torch
 from torch import Tensor, nn
+
+
+# add this function to be global accessible for pickle-friendly
+def hook(self, layer_id, _, __, output):
+    """Hook to extract features via a forward-pass.
+
+    Args:
+        output: Feature map collected after the forward-pass.
+    """
+    self._features[layer_id] = output
 
 
 class FeatureExtractor(nn.Module):
@@ -72,15 +83,7 @@ class FeatureExtractor(nn.Module):
             Layer features
         """
 
-        def hook(_, __, output):
-            """Hook to extract features via a forward-pass.
-
-            Args:
-              output: Feature map collected after the forward-pass.
-            """
-            self._features[layer_id] = output
-
-        return hook
+        return partial(hook, self, layer_id)
 
     def forward(self, input_tensor: Tensor) -> Dict[str, Tensor]:
         """Forward-pass input tensor into the CNN.
